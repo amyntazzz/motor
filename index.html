@@ -130,7 +130,13 @@ hr{border-color:var(--line)!important}
 <div class="card"><div class="statlabel">Jumlah transaksi</div><div class="stat" id="expenseCount">0</div></div>
 </div><div class="card"><h2>Rincian biaya dari riwayat servis</h2><div id="expenseTable"></div></div></section>
 
-<section id="settings" class="hidden"><div class="card"><h2>Pengaturan & data</h2><p class="muted">Prototype menyimpan data di browser yang sedang digunakan.</p><div class="actions"><button class="secondary" onclick="exportData()">Export backup JSON</button><button class="secondary" onclick="document.getElementById('importFile').click()">Import backup</button><input id="importFile" type="file" accept="application/json" class="hidden" onchange="importData(event)"><button class="danger" onclick="resetData()">Hapus semua data</button></div></div><div class="card"><h2>Catatan penting</h2><p class="muted">Angka interval pada template adalah contoh awal, bukan rekomendasi universal. Gunakan buku manual pabrikan atau rekomendasi bengkel tepercaya. Untuk komponen keselamatan seperti rem, ban, dan kemudi, lakukan inspeksi segera bila ada gejala abnormal.</p></div></section>
+<section id="settings" class="hidden">
+<div class="card"><h2>Hubungkan Telegram</h2>
+<p class="muted">Hubungkan Telegram pribadi Anda ke akun RiderCare ini. Kode berlaku 10 menit dan hanya dapat digunakan sekali.</p>
+<div class="actions"><button type="button" onclick="createTelegramLinkCode()">Buat kode penghubung Telegram</button></div>
+<div id="telegramLinkResult" class="notice hidden" style="margin-top:12px"></div>
+<p class="small">Buka bot Telegram, lalu kirim <strong>/link KODE</strong>.</p></div>
+<div class="card"><h2>Pengaturan & data</h2><p class="muted">Prototype menyimpan data di browser yang sedang digunakan.</p><div class="actions"><button class="secondary" onclick="exportData()">Export backup JSON</button><button class="secondary" onclick="document.getElementById('importFile').click()">Import backup</button><input id="importFile" type="file" accept="application/json" class="hidden" onchange="importData(event)"><button class="danger" onclick="resetData()">Hapus semua data</button></div></div><div class="card"><h2>Catatan penting</h2><p class="muted">Angka interval pada template adalah contoh awal, bukan rekomendasi universal. Gunakan buku manual pabrikan atau rekomendasi bengkel tepercaya. Untuk komponen keselamatan seperti rem, ban, dan kemudi, lakukan inspeksi segera bila ada gejala abnormal.</p></div></section>
 </main></div>
 
 <div id="logModal" class="hidden" style="position:fixed;inset:0;background:#000b;display:grid;place-items:center;padding:15px;z-index:5"><div class="card" style="width:min(560px,100%);max-height:92vh;overflow:auto"><div class="row"><h2>Catat maintenance</h2><button class="secondary" onclick="closeLog()">✕</button></div><div class="formgrid">
@@ -244,6 +250,17 @@ function addSchedule(){scheduleModal.classList.remove('hidden');schName.value=''
 let editing=-1;function editSchedule(i){editing=i;let s=data.schedules[i];schName.value=s.name;schKm.value=s.km;schMonths.value=s.months;schLastKm.value=s.lastKm;schLastDate.value=s.lastDate;scheduleModal.classList.remove('hidden')}
 function saveSchedule(){let s={name:schName.value.trim(),km:Number(schKm.value),months:Number(schMonths.value),lastKm:Number(schLastKm.value||0),lastDate:schLastDate.value,reminderKm:300};if(!s.name||(!s.km&&!s.months)){alert('Isi nama dan minimal satu jenis interval.');return}if(editing>=0)data.schedules[editing]=s;else data.schedules.push(s);editing=-1;scheduleModal.classList.add('hidden');save()}
 function completeSchedule(i){let s=data.schedules[i];s.lastKm=data.bike.km;s.lastDate=today();data.logs.push({name:s.name,category:'Maintenance',km:data.bike.km,date:today(),part:0,labor:0,note:'Ditandai selesai dari jadwal'});save()}
+
+async function createTelegramLinkCode(){
+ const box=document.getElementById('telegramLinkResult');box.classList.remove('hidden');box.textContent='Membuat kode…';
+ try{
+  const {data:s,error:se}=await supabaseClient.auth.getSession();if(se||!s.session)throw new Error('Silakan login ulang.');
+  const r=await fetch(`${supabaseUrl}/functions/v1/telegram-link-code`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${s.session.access_token}`,'apikey':supabaseKey},body:'{}'});
+  const j=await r.json();if(!r.ok)throw new Error(j.error||'Gagal membuat kode.');
+  box.innerHTML=`Kode Telegram: <strong style="font-size:22px;letter-spacing:3px">${esc(j.code)}</strong><br>Berlaku 10 menit. Kirim ke bot: <strong>/link ${esc(j.code)}</strong>`;
+ }catch(e){box.textContent='Gagal: '+e.message+'. Pastikan Edge Function sudah dipasang.';}
+}
+
 function exportData(){let blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='ridercare-backup.json';a.click();URL.revokeObjectURL(a.href)}
 function importData(e){let f=e.target.files[0];if(!f)return;let r=new FileReader();r.onload=()=>{try{data=JSON.parse(r.result);save();alert('Backup berhasil diimpor.')}catch{alert('File backup tidak valid.')}};r.readAsText(f)}
 function resetData(){if(confirm('Hapus semua data RiderCare di browser ini?')){data=seed();save()}}
