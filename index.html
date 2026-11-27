@@ -123,23 +123,28 @@ hr{border-color:var(--line)!important}
 
 <section id="schedule" class="hidden"><div class="card"><div class="row"><div><h2>Jadwal maintenance</h2><div class="small">Interval contoh. Sesuaikan dengan buku manual dan kondisi motor.</div></div><button onclick="addSchedule()">＋ Jadwal</button></div><div id="scheduleTable"></div></div></section>
 
-<section id="history" class="hidden"><div class="card"><div class="row"><h2>Riwayat maintenance</h2><button onclick="openLog()">＋ Catat servis</button></div><div id="historyTable"></div></div></section>
+<section id="history" class="hidden">
+<div class="card">
+ <div class="row"><div><h2>Riwayat maintenance</h2><div class="small">Cari, edit, hapus, dan ekspor catatan servis Anda.</div></div><div class="actions"><button class="secondary" onclick="exportLogsCsv()">Ekspor CSV</button><button onclick="openLog()">＋ Catat servis</button></div></div>
+ <div class="formgrid" style="margin-top:14px">
+  <div class="field"><label>Cari riwayat</label><input id="historySearch" type="search" placeholder="Nama servis, catatan, tanggal..." oninput="renderHistoryTable()"></div>
+  <div class="field"><label>Filter kategori</label><select id="historyCategory" onchange="renderHistoryTable()"><option value="">Semua kategori</option><option>Mesin</option><option>CVT</option><option>Rem</option><option>Kelistrikan</option><option>Kaki-kaki</option><option>Ban</option><option>Lainnya</option><option>Maintenance</option></select></div>
+  <div class="field"><label>Urutan</label><select id="historySort" onchange="renderHistoryTable()"><option value="newest">Terbaru dahulu</option><option value="oldest">Terlama dahulu</option><option value="cost-high">Biaya tertinggi</option><option value="cost-low">Biaya terendah</option><option value="km-high">KM tertinggi</option></select></div>
+ </div>
+ <div id="historySummary" class="small" style="margin:4px 0 12px"></div>
+ <div id="historyTable"></div>
+</div>
+</section>
 
 <section id="expenses" class="hidden"><div class="grid">
 <div class="card"><div class="statlabel">Total pengeluaran</div><div class="stat" id="expenseTotal">Rp0</div></div>
 <div class="card"><div class="statlabel">Jumlah transaksi</div><div class="stat" id="expenseCount">0</div></div>
 </div><div class="card"><h2>Rincian biaya dari riwayat servis</h2><div id="expenseTable"></div></div></section>
 
-<section id="settings" class="hidden">
-<div class="card"><h2>Hubungkan Telegram</h2>
-<p class="muted">Hubungkan Telegram pribadi Anda ke akun RiderCare ini. Kode berlaku 10 menit dan hanya dapat digunakan sekali.</p>
-<div class="actions"><button type="button" onclick="createTelegramLinkCode()">Buat kode penghubung Telegram</button></div>
-<div id="telegramLinkResult" class="notice hidden" style="margin-top:12px"></div>
-<p class="small">Buka bot Telegram, lalu kirim <strong>/link KODE</strong>.</p></div>
-<div class="card"><h2>Pengaturan & data</h2><p class="muted">Prototype menyimpan data di browser yang sedang digunakan.</p><div class="actions"><button class="secondary" onclick="exportData()">Export backup JSON</button><button class="secondary" onclick="document.getElementById('importFile').click()">Import backup</button><input id="importFile" type="file" accept="application/json" class="hidden" onchange="importData(event)"><button class="danger" onclick="resetData()">Hapus semua data</button></div></div><div class="card"><h2>Catatan penting</h2><p class="muted">Angka interval pada template adalah contoh awal, bukan rekomendasi universal. Gunakan buku manual pabrikan atau rekomendasi bengkel tepercaya. Untuk komponen keselamatan seperti rem, ban, dan kemudi, lakukan inspeksi segera bila ada gejala abnormal.</p></div></section>
+<section id="settings" class="hidden"><div class="card"><h2>Pengaturan & data</h2><p class="muted">Data tersimpan di akun Supabase Anda dan dapat dibuka setelah login dari perangkat lain. Simpan backup secara berkala sebelum impor atau perubahan besar.</p><div class="actions"><button class="secondary" onclick="exportData()">Export backup JSON</button><button class="secondary" onclick="document.getElementById('importFile').click()">Import backup</button><input id="importFile" type="file" accept="application/json" class="hidden" onchange="importData(event)"><button class="danger" onclick="resetData()">Hapus semua data</button></div></div><div class="card"><h2>Catatan penting</h2><p class="muted">Angka interval pada template adalah contoh awal, bukan rekomendasi universal. Gunakan buku manual pabrikan atau rekomendasi bengkel tepercaya. Untuk komponen keselamatan seperti rem, ban, dan kemudi, lakukan inspeksi segera bila ada gejala abnormal.</p></div></section>
 </main></div>
 
-<div id="logModal" class="hidden" style="position:fixed;inset:0;background:#000b;display:grid;place-items:center;padding:15px;z-index:5"><div class="card" style="width:min(560px,100%);max-height:92vh;overflow:auto"><div class="row"><h2>Catat maintenance</h2><button class="secondary" onclick="closeLog()">✕</button></div><div class="formgrid">
+<div id="logModal" class="hidden" style="position:fixed;inset:0;background:#000b;display:grid;place-items:center;padding:15px;z-index:5"><div class="card" style="width:min(560px,100%);max-height:92vh;overflow:auto"><div class="row"><h2 id="logModalTitle">Catat maintenance</h2><button class="secondary" onclick="closeLog()">✕</button></div><div class="formgrid">
 <div class="field"><label>Nama maintenance</label><input id="logName" placeholder="Ganti oli mesin"></div>
 <div class="field"><label>Kategori</label><select id="logCategory"><option>Mesin</option><option>CVT</option><option>Rem</option><option>Kelistrikan</option><option>Kaki-kaki</option><option>Ban</option><option>Lainnya</option></select></div>
 <div class="field"><label>Tanggal</label><input id="logDate" type="date"></div>
@@ -147,7 +152,7 @@ hr{border-color:var(--line)!important}
 <div class="field"><label>Biaya sparepart (Rp)</label><input id="logPart" type="number" min="0" value="0"></div>
 <div class="field"><label>Biaya jasa (Rp)</label><input id="logLabor" type="number" min="0" value="0"></div>
 <div class="field full"><label>Catatan / merek sparepart</label><textarea id="logNote" rows="2" placeholder="Merek oli, kondisi komponen, nama bengkel..."></textarea></div>
-</div><button onclick="saveLog()">Simpan catatan</button></div></div>
+</div><div class="actions"><button id="logSaveButton" onclick="saveLog()">Simpan catatan</button><button class="secondary hidden" id="logCancelEdit" onclick="resetLogEditor()">Batal edit</button></div></div></div>
 
 <div id="scheduleModal" class="hidden" style="position:fixed;inset:0;background:#000b;display:grid;place-items:center;padding:15px;z-index:5"><div class="card" style="width:min(500px,100%)"><div class="row"><h2>Tambah jadwal</h2><button class="secondary" onclick="document.getElementById('scheduleModal').classList.add('hidden')">✕</button></div><div class="field"><label>Nama perawatan</label><input id="schName" placeholder="Contoh: Ganti oli mesin"></div><div class="formgrid"><div class="field"><label>Interval kilometer (0 jika tidak dipakai)</label><input id="schKm" type="number" value="0" min="0"></div><div class="field"><label>Interval bulan (0 jika tidak dipakai)</label><input id="schMonths" type="number" value="0" min="0"></div><div class="field"><label>KM terakhir dilakukan</label><input id="schLastKm" type="number" min="0"></div><div class="field"><label>Tanggal terakhir dilakukan</label><input id="schLastDate" type="date"></div></div><button onclick="saveSchedule()">Simpan jadwal</button></div></div>
 
@@ -237,30 +242,73 @@ function plusMonths(date,m){if(!date||!m)return null;let d=new Date(date+'T12:00
 function status(s){let kmDue=s.km>0&&data.bike.km>=s.lastKm+s.km;let dateTarget=s.months>0?plusMonths(s.lastDate,s.months):null;let dateDue=dateTarget&&today()>=dateTarget;let kmLeft=s.km>0?s.lastKm+s.km-data.bike.km:null;let dateLeft=dateTarget?Math.ceil((new Date(dateTarget)-new Date(today()))/86400000):null;let due=kmDue||dateDue;let upcoming=!due&&((kmLeft!==null&&kmLeft<=s.reminderKm)||(dateLeft!==null&&dateLeft<=14));return {due,upcoming,kmLeft,dateTarget,dateLeft}}
 function badge(st){return st.due?'<span class="pill bad">Due / overdue</span>':st.upcoming?'<span class="pill warn">Segera</span>':'<span class="pill">Normal</span>'}
 function scheduleHtml(limit=99){let rows=data.schedules.map((s,i)=>({s,i,st:status(s)})).sort((a,b)=>(a.st.due?-2:a.st.upcoming?-1:0)-(b.st.due?-2:b.st.upcoming?-1:0));if(limit)rows=rows.slice(0,limit);if(!rows.length)return '<div class="empty">Belum ada jadwal.</div>';return rows.map(({s,i,st})=>`<div style="padding:12px 0;border-bottom:1px solid var(--line)"><div class="row"><strong>${esc(s.name)}</strong>${badge(st)}</div><div class="small">${s.km?`Target ${fmt(s.lastKm+s.km)} KM · ${st.kmLeft>0?`sisa ${fmt(st.kmLeft)} KM`:'batas KM tercapai'}`:''}${s.km&&s.months?' · ':''}${s.months?`Target tanggal ${st.dateTarget||'belum dihitung'} · ${st.dateLeft>0?st.dateLeft+' hari lagi':'batas waktu tercapai'}`:''}</div><div class="actions" style="margin-top:8px"><button class="secondary" onclick="completeSchedule(${i})">Tandai selesai</button><button class="secondary" onclick="editSchedule(${i})">Edit</button></div></div>`).join('')}
-function tableLogs(logs){if(!logs.length)return '<div class="empty">Belum ada catatan. Mulai dengan tombol “Catat servis”.</div>';return `<table><thead><tr><th>Tanggal</th><th>Maintenance</th><th>KM</th><th>Biaya</th></tr></thead><tbody>${logs.slice().reverse().map(l=>`<tr><td>${esc(l.date)}</td><td><strong>${esc(l.name)}</strong><div class="small">${esc(l.category)} ${l.note?'· '+esc(l.note):''}</div></td><td>${fmt(l.km)}</td><td>${rupiah(l.part+l.labor)}</td></tr>`).join('')}</tbody></table>`}
-function render(){document.getElementById('statKm').textContent=fmt(data.bike.km)+' KM';document.getElementById('statDue').textContent=data.schedules.filter(s=>status(s).due).length;document.getElementById('statLogs').textContent=data.logs.length;let cost=data.logs.reduce((a,l)=>a+l.part+l.labor,0);document.getElementById('statCost').textContent=rupiah(cost);document.getElementById('dashBike').textContent=data.bike.name||'Motor saya';document.getElementById('dashMeta').textContent=[data.bike.model,data.bike.year].filter(Boolean).join(' · ')||'Lengkapi profil motor';document.getElementById('dashSchedule').innerHTML=scheduleHtml(4);document.getElementById('dashHistory').innerHTML=tableLogs(data.logs.slice(-5));document.getElementById('odoTable').innerHTML=data.odos.length?`<table><thead><tr><th>Tanggal</th><th>KM</th><th>Catatan</th></tr></thead><tbody>${data.odos.slice().reverse().map(o=>`<tr><td>${esc(o.date)}</td><td>${fmt(o.km)}</td><td>${esc(o.note)}</td></tr>`).join('')}</tbody></table>`:'<div class="empty">Belum ada data odometer.</div>';document.getElementById('scheduleTable').innerHTML=scheduleHtml();document.getElementById('historyTable').innerHTML=tableLogs(data.logs);document.getElementById('expenseTotal').textContent=rupiah(cost);document.getElementById('expenseCount').textContent=data.logs.length;document.getElementById('expenseTable').innerHTML=tableLogs(data.logs);['bikeName','bikeModel','bikeYear','bikeTrans','bikeKm','bikeDate'].forEach((id)=>{let k={bikeName:'name',bikeModel:'model',bikeYear:'year',bikeTrans:'trans',bikeKm:'km',bikeDate:'date'}[id];document.getElementById(id).value=data.bike[k]??''})}
+function tableLogs(logs,baseIndex=0){
+ if(!logs.length)return '<div class="empty">Belum ada catatan. Mulai dengan tombol “Catat servis”.</div>';
+ const rows=logs.map((l,j)=>({l,index:baseIndex+j})).reverse();
+ return `<div style="overflow-x:auto"><table><thead><tr><th>Tanggal</th><th>Maintenance</th><th>KM</th><th>Biaya</th><th>Aksi</th></tr></thead><tbody>${rows.map(({l,index})=>`<tr><td>${esc(l.date||'-')}</td><td><strong>${esc(l.name||'Servis')}</strong><div class="small">${esc(l.category||'Lainnya')} ${l.note?'· '+esc(l.note):''}</div><div class="small">Sparepart ${rupiah(l.part)} · Jasa ${rupiah(l.labor)}</div></td><td>${fmt(l.km)}</td><td><strong>${rupiah(Number(l.part||0)+Number(l.labor||0))}</strong></td><td><div class="actions"><button class="secondary" onclick="editLog(${index})">Edit</button><button class="danger" onclick="deleteLog(${index})">Hapus</button></div></td></tr>`).join('')}</tbody></table></div>`;
+}
+let editingLogIndex=null;
+function renderHistoryTable(){
+ const q=($('historySearch')?.value||'').trim().toLowerCase();
+ const category=$('historyCategory')?.value||'';
+ const sort=$('historySort')?.value||'newest';
+ let rows=data.logs.map((log,index)=>({log,index})).filter(({log})=>{
+  const hay=[log.name,log.category,log.note,log.date,log.km].join(' ').toLowerCase();
+  return (!q||hay.includes(q))&&(!category||String(log.category||'Lainnya')===category);
+ });
+ rows.sort((a,b)=>{
+  if(sort==='oldest')return String(a.log.date||'').localeCompare(String(b.log.date||''));
+  if(sort==='cost-high')return (Number(b.log.part||0)+Number(b.log.labor||0))-(Number(a.log.part||0)+Number(a.log.labor||0));
+  if(sort==='cost-low')return (Number(a.log.part||0)+Number(a.log.labor||0))-(Number(b.log.part||0)+Number(b.log.labor||0));
+  if(sort==='km-high')return Number(b.log.km||0)-Number(a.log.km||0);
+  return String(b.log.date||'').localeCompare(String(a.log.date||''));
+ });
+ const total=rows.reduce((sum,{log})=>sum+Number(log.part||0)+Number(log.labor||0),0);
+ $('historySummary').textContent=`Menampilkan ${rows.length} dari ${data.logs.length} catatan · Total biaya hasil filter ${rupiah(total)}`;
+ if(!rows.length){$('historyTable').innerHTML='<div class="empty">Tidak ada riwayat yang cocok dengan filter.</div>';return;}
+ $('historyTable').innerHTML=`<div style="overflow-x:auto"><table><thead><tr><th>Tanggal</th><th>Maintenance</th><th>KM</th><th>Biaya</th><th>Aksi</th></tr></thead><tbody>${rows.map(({log,index})=>`<tr><td>${esc(log.date||'-')}</td><td><strong>${esc(log.name||'Servis')}</strong><div class="small">${esc(log.category||'Lainnya')} ${log.note?'· '+esc(log.note):''}</div><div class="small">Sparepart ${rupiah(log.part)} · Jasa ${rupiah(log.labor)}</div></td><td>${fmt(log.km)}</td><td><strong>${rupiah(Number(log.part||0)+Number(log.labor||0))}</strong></td><td><div class="actions"><button class="secondary" onclick="editLog(${index})">Edit</button><button class="danger" onclick="deleteLog(${index})">Hapus</button></div></td></tr>`).join('')}</tbody></table></div>`;
+}
+function editLog(index){
+ const log=data.logs[index];if(!log)return;
+ editingLogIndex=index;
+ $('logName').value=log.name||'';$('logCategory').value=log.category||'Lainnya';$('logDate').value=log.date||today();$('logKm').value=Number(log.km||0);$('logPart').value=Number(log.part||0);$('logLabor').value=Number(log.labor||0);$('logNote').value=log.note||'';
+ $('logModalTitle').textContent='Edit catatan servis';$('logSaveButton').textContent='Simpan perubahan';$('logCancelEdit').classList.remove('hidden');
+ $('logModal').classList.remove('hidden');
+}
+function resetLogEditor(){editingLogIndex=null;$('logModalTitle').textContent='Catat maintenance';$('logSaveButton').textContent='Simpan catatan';$('logCancelEdit').classList.add('hidden');['logName','logNote'].forEach(id=>$(id).value='');$('logPart').value=0;$('logLabor').value=0;}
+function deleteLog(index){
+ const log=data.logs[index];if(!log)return;
+ if(!confirm(`Hapus catatan “${log.name||'Servis'}” tanggal ${log.date||'-'}? Tindakan ini tidak bisa dibatalkan.`))return;
+ data.logs.splice(index,1);save();
+ if($('historySearch'))renderHistoryTable();
+ alert('Catatan servis berhasil dihapus. Total pengeluaran telah diperbarui.');
+}
+function exportLogsCsv(){
+ const rows=[['Tanggal','Nama servis','Kategori','Kilometer','Biaya sparepart','Biaya jasa','Total biaya','Catatan'],...data.logs.map(l=>[l.date||'',l.name||'',l.category||'',l.km||0,l.part||0,l.labor||0,Number(l.part||0)+Number(l.labor||0),l.note||''])];
+ const csv=rows.map(row=>row.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(',')).join('\r\n');
+ const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='ridercare-riwayat-servis.csv';a.click();URL.revokeObjectURL(url);
+}
+function render(){document.getElementById('statKm').textContent=fmt(data.bike.km)+' KM';document.getElementById('statDue').textContent=data.schedules.filter(s=>status(s).due).length;document.getElementById('statLogs').textContent=data.logs.length;let cost=data.logs.reduce((a,l)=>a+l.part+l.labor,0);document.getElementById('statCost').textContent=rupiah(cost);document.getElementById('dashBike').textContent=data.bike.name||'Motor saya';document.getElementById('dashMeta').textContent=[data.bike.model,data.bike.year].filter(Boolean).join(' · ')||'Lengkapi profil motor';document.getElementById('dashSchedule').innerHTML=scheduleHtml(4);document.getElementById('dashHistory').innerHTML=tableLogs(data.logs.slice(-5),Math.max(0,data.logs.length-5));document.getElementById('odoTable').innerHTML=data.odos.length?`<table><thead><tr><th>Tanggal</th><th>KM</th><th>Catatan</th></tr></thead><tbody>${data.odos.slice().reverse().map(o=>`<tr><td>${esc(o.date)}</td><td>${fmt(o.km)}</td><td>${esc(o.note)}</td></tr>`).join('')}</tbody></table>`:'<div class="empty">Belum ada data odometer.</div>';document.getElementById('scheduleTable').innerHTML=scheduleHtml();renderHistoryTable();document.getElementById('expenseTotal').textContent=rupiah(cost);document.getElementById('expenseCount').textContent=data.logs.length;document.getElementById('expenseTable').innerHTML=tableLogs(data.logs);['bikeName','bikeModel','bikeYear','bikeTrans','bikeKm','bikeDate'].forEach((id)=>{let k={bikeName:'name',bikeModel:'model',bikeYear:'year',bikeTrans:'trans',bikeKm:'km',bikeDate:'date'}[id];document.getElementById(id).value=data.bike[k]??''})}
 function showPage(p){document.querySelectorAll('main section').forEach(s=>s.classList.add('hidden'));document.getElementById(p).classList.remove('hidden');document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.page===p));let names={dashboard:'Dashboard',motor:'Motor saya',odometer:'Odometer',schedule:'Jadwal maintenance',history:'Riwayat servis',expenses:'Pengeluaran',settings:'Pengaturan'};document.getElementById('pageTitle').textContent=names[p];document.getElementById('subTitle').textContent=p==='dashboard'?'Pantau kondisi dan jadwal perawatan motor Anda.':names[p];render()}
 document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>showPage(b.dataset.page));
 function saveBike(){data.bike={name:bikeName.value,model:bikeModel.value,year:bikeYear.value,trans:bikeTrans.value,km:Number(bikeKm.value||0),date:bikeDate.value};save();alert('Profil motor disimpan.')}
 function addOdo(){let km=Number(odoKm.value),date=odoDate.value||today();if(!km||km<data.bike.km){alert('Masukkan kilometer yang valid dan tidak lebih rendah dari odometer saat ini.');return}data.bike.km=km;data.odos.push({km,date,note:odoNote.value});save();odoKm.value='';odoNote.value='';alert('Odometer diperbarui.')}
-function openLog(){logModal.classList.remove('hidden');logDate.value=today();logKm.value=data.bike.km}
-function closeLog(){logModal.classList.add('hidden')}
-function saveLog(){let name=logName.value.trim(),km=Number(logKm.value),date=logDate.value||today();if(!name||!km){alert('Nama maintenance dan kilometer wajib diisi.');return}let part=Number(logPart.value||0),labor=Number(logLabor.value||0);data.logs.push({name,category:logCategory.value,km,date,part,labor,note:logNote.value});if(km>data.bike.km)data.bike.km=km;let match=data.schedules.find(s=>s.name.toLowerCase()===name.toLowerCase());if(match){match.lastKm=km;match.lastDate=date}save();closeLog();['logName','logNote'].forEach(id=>document.getElementById(id).value='');alert('Catatan servis tersimpan. Jadwal yang namanya cocok ikut diperbarui.')}
+function openLog(){resetLogEditor();$('logModal').classList.remove('hidden');$('logDate').value=today();$('logKm').value=data.bike.km;$('logPart').value=0;$('logLabor').value=0}
+function closeLog(){$('logModal').classList.add('hidden');resetLogEditor()}
+function saveLog(){
+ const name=$('logName').value.trim(),km=Number($('logKm').value),date=$('logDate').value||today();
+ const part=Number($('logPart').value||0),labor=Number($('logLabor').value||0);
+ if(!name||!Number.isFinite(km)||km<0){alert('Nama maintenance dan kilometer yang valid wajib diisi.');return}
+ if(!Number.isFinite(part)||part<0||!Number.isFinite(labor)||labor<0){alert('Biaya sparepart dan jasa harus berupa angka nol atau lebih.');return}
+ const entry={name,category:$('logCategory').value,km,date,part,labor,note:$('logNote').value.trim()};
+ if(editingLogIndex!==null){data.logs[editingLogIndex]=entry;}
+ else {data.logs.push(entry);if(km>Number(data.bike.km||0))data.bike.km=km;let match=data.schedules.find(s=>s.name.toLowerCase()===name.toLowerCase());if(match){match.lastKm=km;match.lastDate=date}}
+ const wasEditing=editingLogIndex!==null;save();closeLog();alert(wasEditing?'Perubahan catatan servis tersimpan.':'Catatan servis tersimpan.');
+}
 function addSchedule(){scheduleModal.classList.remove('hidden');schName.value='';schKm.value=0;schMonths.value=0;schLastKm.value=data.bike.km;schLastDate.value=today()}
 let editing=-1;function editSchedule(i){editing=i;let s=data.schedules[i];schName.value=s.name;schKm.value=s.km;schMonths.value=s.months;schLastKm.value=s.lastKm;schLastDate.value=s.lastDate;scheduleModal.classList.remove('hidden')}
 function saveSchedule(){let s={name:schName.value.trim(),km:Number(schKm.value),months:Number(schMonths.value),lastKm:Number(schLastKm.value||0),lastDate:schLastDate.value,reminderKm:300};if(!s.name||(!s.km&&!s.months)){alert('Isi nama dan minimal satu jenis interval.');return}if(editing>=0)data.schedules[editing]=s;else data.schedules.push(s);editing=-1;scheduleModal.classList.add('hidden');save()}
 function completeSchedule(i){let s=data.schedules[i];s.lastKm=data.bike.km;s.lastDate=today();data.logs.push({name:s.name,category:'Maintenance',km:data.bike.km,date:today(),part:0,labor:0,note:'Ditandai selesai dari jadwal'});save()}
-
-async function createTelegramLinkCode(){
- const box=document.getElementById('telegramLinkResult');box.classList.remove('hidden');box.textContent='Membuat kode…';
- try{
-  const {data:s,error:se}=await supabaseClient.auth.getSession();if(se||!s.session)throw new Error('Silakan login ulang.');
-  const r=await fetch(`${supabaseUrl}/functions/v1/telegram-link-code`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${s.session.access_token}`,'apikey':supabaseKey},body:'{}'});
-  const j=await r.json();if(!r.ok)throw new Error(j.error||'Gagal membuat kode.');
-  box.innerHTML=`Kode Telegram: <strong style="font-size:22px;letter-spacing:3px">${esc(j.code)}</strong><br>Berlaku 10 menit. Kirim ke bot: <strong>/link ${esc(j.code)}</strong>`;
- }catch(e){box.textContent='Gagal: '+e.message+'. Pastikan Edge Function sudah dipasang.';}
-}
-
 function exportData(){let blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='ridercare-backup.json';a.click();URL.revokeObjectURL(a.href)}
 function importData(e){let f=e.target.files[0];if(!f)return;let r=new FileReader();r.onload=()=>{try{data=JSON.parse(r.result);save();alert('Backup berhasil diimpor.')}catch{alert('File backup tidak valid.')}};r.readAsText(f)}
 function resetData(){if(confirm('Hapus semua data RiderCare di browser ini?')){data=seed();save()}}
