@@ -77,7 +77,16 @@ hr{border-color:var(--line)!important}
 <div class="field"><label>Email</label><input id="authEmail" type="email" autocomplete="email" placeholder="nama@email.com"></div>
 <div class="field"><label>Password</label><input id="authPassword" type="password" autocomplete="current-password" placeholder="Minimal 6 karakter"></div>
 <div class="actions"><button onclick="signIn()">Masuk</button><button class="secondary" onclick="signUp()">Daftar akun</button></div>
+<p style="margin:10px 0 0"><button type="button" class="secondary" style="padding:5px 0;background:transparent;border:0;box-shadow:none;color:#477b8a" onclick="sendPasswordReset()">Lupa password?</button></p>
 <p class="small" id="authMessage" style="margin-top:12px"></p>
+</section>
+<section id="recoveryPanel" style="max-width:460px;margin:8vh auto;padding:22px" class="card hidden">
+ <h1 style="margin-bottom:8px">Buat Password Baru</h1>
+ <p class="muted">Masukkan password baru untuk akun RiderCare Anda.</p>
+ <div class="field"><label>Password baru</label><input id="newPassword" type="password" autocomplete="new-password" placeholder="Minimal 6 karakter"></div>
+ <div class="field"><label>Ulangi password baru</label><input id="confirmNewPassword" type="password" autocomplete="new-password" placeholder="Ketik ulang password baru"></div>
+ <div class="actions"><button onclick="updatePassword()">Simpan password baru</button></div>
+ <p class="small" id="recoveryMessage" style="margin-top:12px"></p>
 </section>
 <div class="app hidden" id="mainApp">
 <aside class="sidebar">
@@ -200,6 +209,38 @@ async function signIn(){
  if(error){setAuthMessage(error.message);return;}
  await startApp(res.user);
 }
+
+async function sendPasswordReset(){
+ const email=document.getElementById('authEmail').value.trim();
+ if(!email){setAuthMessage('Masukkan alamat email akun Anda terlebih dahulu.');return;}
+ const redirectTo=window.location.origin+window.location.pathname;
+ const {error}=await supabaseClient.auth.resetPasswordForEmail(email,{redirectTo});
+ setAuthMessage(error?'Gagal mengirim tautan reset password: '+error.message:'Tautan reset password telah dikirim jika email terdaftar. Periksa inbox dan folder spam.');
+}
+async function updatePassword(){
+ const password=document.getElementById('newPassword').value;
+ const confirmPassword=document.getElementById('confirmNewPassword').value;
+ const message=document.getElementById('recoveryMessage');
+ if(password.length<6){message.textContent='Password baru minimal 6 karakter.';return;}
+ if(password!==confirmPassword){message.textContent='Konfirmasi password tidak sama.';return;}
+ const {error}=await supabaseClient.auth.updateUser({password});
+ if(error){message.textContent='Gagal memperbarui password: '+error.message;return;}
+ message.textContent='Password berhasil diperbarui. Silakan masuk kembali dengan password baru.';
+ await supabaseClient.auth.signOut();
+ document.getElementById('recoveryPanel').classList.add('hidden');
+ document.getElementById('authPanel').classList.remove('hidden');
+ document.getElementById('authPassword').value='';
+ document.getElementById('newPassword').value='';
+ document.getElementById('confirmNewPassword').value='';
+ setAuthMessage('Password berhasil diperbarui. Silakan masuk dengan password baru.');
+}
+supabaseClient.auth.onAuthStateChange((event) => {
+ if(event==='PASSWORD_RECOVERY'){
+   document.getElementById('authPanel').classList.add('hidden');
+   document.getElementById('mainApp').classList.add('hidden');
+   document.getElementById('recoveryPanel').classList.remove('hidden');
+ }
+});
 async function signOut(){
   if(realtimeChannel){
     await supabaseClient.removeChannel(realtimeChannel);
