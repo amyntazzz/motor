@@ -167,7 +167,7 @@ const seed=()=>({bike:{name:'Motor saya',model:'',year:'',trans:'CVT',km:0,date:
 {name:'Pemeriksaan busi',km:8000,months:0,lastKm:0,lastDate:'',reminderKm:500},
 {name:'Pemeriksaan rem dan ban',km:0,months:1,lastKm:0,lastDate:'',reminderKm:0}
 ]});
-let data=seed(), currentUser=null, cloudReady=false, saveQueue=Promise.resolve();
+let data=seed(), currentUser=null, cloudReady=false, saveQueue=Promise.resolve(), lastSaveSucceeded=true;
 let realtimeChannel = null;
 const supabaseUrl = window.RIDERCARE_SUPABASE_URL;
 const supabaseKey = window.RIDERCARE_SUPABASE_ANON_KEY;
@@ -237,7 +237,39 @@ function save(){
  localStorage.setItem(KEY,JSON.stringify(data));
  render();
  if(currentUser && cloudReady){
-   saveQueue=saveQueue.then(()=>persistCloud()).catch(err=>setNotice('Sinkronisasi gagal: '+err.message));
+   saveQueue=saveQueue.then(async()=>{
+     await persistCloud();
+     lastSaveSucceeded=true;
+   }).catch(err=>{
+     lastSaveSucceeded=false;
+     setNotice('Sinkronisasi gagal: '+err.message);
+   });
+ }
+ return saveQueue;
+}
+
+async function notifyTelegramServiceChange(eventType, log){
+ try{
+   await saveQueue;
+   if(!currentUser || !cloudReady || !lastSaveSucceeded) return;
+   const {error}=await supabaseClient.functions.invoke('telegram-notify',{
+     body:{event:eventType,service:{
+       name:String(log?.name||'Servis'),
+       category:String(log?.category||'Lainnya'),
+       date:String(log?.date||''),
+       km:Number(log?.km||0),
+       part:Number(log?.part||0),
+       labor:Number(log?.labor||0),
+       note:String(log?.note||'')
+     }}
+   });
+   if(error){
+     console.error('Notifikasi Telegram gagal:',error);
+     setNotice('Data tersimpan, tetapi notifikasi Telegram gagal dikirim: '+error.message);
+   }
+ }catch(error){
+   console.error('Notifikasi Telegram gagal:',error);
+   setNotice('Data tersimpan, tetapi notifikasi Telegram gagal dikirim.');
  }
 }
 
@@ -340,7 +372,9 @@ function resetLogEditor(){editingLogIndex=null;$('logModalTitle').textContent='C
 function deleteLog(index){
  const log=data.logs[index];if(!log)return;
  if(!confirm(`Hapus catatan “${log.name||'Servis'}” tanggal ${log.date||'-'}? Tindakan ini tidak bisa dibatalkan.`))return;
- data.logs.splice(index,1);save();
+ data.logs.splice(index,1);
+  save();
+  notifyTelegramServiceChange('deleted',log);
  if($('historySearch'))renderHistoryTable();
  alert('Catatan servis berhasil dihapus. Total pengeluaran telah diperbarui.');
 }
@@ -373,12 +407,24 @@ function saveLog(){
  const entry={name,category:$('logCategory').value,km,date,part,labor,note:$('logNote').value.trim()};
  if(editingLogIndex!==null){data.logs[editingLogIndex]=entry;}
  else {data.logs.push(entry);if(km>Number(data.bike.km||0))data.bike.km=km;let match=data.schedules.find(s=>s.name.toLowerCase()===name.toLowerCase());if(match){match.lastKm=km;match.lastDate=date}}
- const wasEditing=editingLogIndex!==null;save();closeLog();alert(wasEditing?'Perubahan catatan servis tersimpan.':'Catatan servis tersimpan.');
+ const wasEditing=editingLogIndex!==null;
+  save();
+  notifyTelegramServiceChange(wasEditing?'updated':'created',entry);
+  closeLog();
+  alert(wasEditing?'Perubahan catatan servis tersimpan.':'Catatan servis tersimpan.');
 }
 function addSchedule(){scheduleModal.classList.remove('hidden');schName.value='';schKm.value=0;schMonths.value=0;schLastKm.value=data.bike.km;schLastDate.value=today()}
 let editing=-1;function editSchedule(i){editing=i;let s=data.schedules[i];schName.value=s.name;schKm.value=s.km;schMonths.value=s.months;schLastKm.value=s.lastKm;schLastDate.value=s.lastDate;scheduleModal.classList.remove('hidden')}
 function saveSchedule(){let s={name:schName.value.trim(),km:Number(schKm.value),months:Number(schMonths.value),lastKm:Number(schLastKm.value||0),lastDate:schLastDate.value,reminderKm:300};if(!s.name||(!s.km&&!s.months)){alert('Isi nama dan minimal satu jenis interval.');return}if(editing>=0)data.schedules[editing]=s;else data.schedules.push(s);editing=-1;scheduleModal.classList.add('hidden');save()}
-function completeSchedule(i){let s=data.schedules[i];s.lastKm=data.bike.km;s.lastDate=today();data.logs.push({name:s.name,category:'Maintenance',km:data.bike.km,date:today(),part:0,labor:0,note:'Ditandai selesai dari jadwal'});save()}
+function completeSchedule(i){
+ let s=data.schedules[i];
+ s.lastKm=data.bike.km;
+ s.lastDate=today();
+ const entry={name:s.name,category:'Maintenance',km:data.bike.km,date:today(),part:0,labor:0,note:'Ditandai selesai dari jadwal'};
+ data.logs.push(entry);
+ save();
+ notifyTelegramServiceChange('created',entry);
+}
 function exportData(){let blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='ridercare-backup.json';a.click();URL.revokeObjectURL(a.href)}
 function importData(e){let f=e.target.files[0];if(!f)return;let r=new FileReader();r.onload=()=>{try{data=JSON.parse(r.result);save();alert('Backup berhasil diimpor.')}catch{alert('File backup tidak valid.')}};r.readAsText(f)}
 function resetData(){if(confirm('Hapus semua data RiderCare di browser ini?')){data=seed();save()}}
