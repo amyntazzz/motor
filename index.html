@@ -168,6 +168,7 @@ const seed=()=>({bike:{name:'Motor saya',model:'',year:'',trans:'CVT',km:0,date:
 {name:'Pemeriksaan rem dan ban',km:0,months:1,lastKm:0,lastDate:'',reminderKm:0}
 ]});
 let data=seed(), currentUser=null, cloudReady=false, saveQueue=Promise.resolve();
+let realtimeChannel = null;
 const supabaseUrl = window.RIDERCARE_SUPABASE_URL;
 const supabaseKey = window.RIDERCARE_SUPABASE_ANON_KEY;
 if (!window.supabase?.createClient || !supabaseUrl || !supabaseKey || supabaseUrl.includes('YOUR_PROJECT_ID') || supabaseKey.includes('YOUR_SUPABASE')) {
@@ -199,7 +200,20 @@ async function signIn(){
  if(error){setAuthMessage(error.message);return;}
  await startApp(res.user);
 }
-async function signOut(){await supabaseClient.auth.signOut();currentUser=null;cloudReady=false;document.getElementById('mainApp').classList.add('hidden');document.getElementById('authPanel').classList.remove('hidden');}
+async function signOut(){
+  if(realtimeChannel){
+    await supabaseClient.removeChannel(realtimeChannel);
+    realtimeChannel = null;
+  }
+
+  await supabaseClient.auth.signOut();
+
+  currentUser=null;
+  cloudReady=false;
+
+  document.getElementById('mainApp').classList.add('hidden');
+  document.getElementById('authPanel').classList.remove('hidden');
+}
 async function startApp(user){
  currentUser=user;
  document.getElementById('authPanel').classList.add('hidden');
@@ -215,8 +229,9 @@ async function startApp(user){
    await persistCloud();
  }
  cloudReady=true;
- render();
- setNotice('Tersinkron ke Supabase. Data akun dapat dibuka dari perangkat lain setelah login.',true);
+render();
+subscribeRealtime();
+setNotice('Terhubung ke akunmu.',true);
 }
 function save(){
  localStorage.setItem(KEY,JSON.stringify(data));
@@ -225,6 +240,52 @@ function save(){
    saveQueue=saveQueue.then(()=>persistCloud()).catch(err=>setNotice('Sinkronisasi gagal: '+err.message));
  }
 }
+
+function subscribeRealtime(){
+  if(!currentUser) return;
+
+  if(realtimeChannel){
+    supabaseClient.removeChannel(realtimeChannel);
+    realtimeChannel = null;
+  }
+
+  const subscribedUserId = currentUser.id;
+
+  realtimeChannel = supabaseClient
+    .channel('ridercare-data-' + subscribedUserId)
+    .on('postgres_changes', {
+      event: '*',
+      schema: 'public',
+      table: 'ridercare_data',
+      filter: `user_id=eq.${subscribedUserId}`
+    }, async () => {
+      if(!currentUser || currentUser.id !== subscribedUserId || !cloudReady) return;
+
+      const {data:row,error} = await supabaseClient
+        .from('ridercare_data')
+        .select('app_data')
+        .eq('user_id', subscribedUserId)
+        .maybeSingle();
+
+      if(error){
+        setNotice('Gagal memperbarui data: ' + error.message);
+        return;
+      }
+
+      if(row?.app_data){
+        data = row.app_data;
+        localStorage.setItem(KEY, JSON.stringify(data));
+        render();
+        setNotice('Data diperbarui otomatis dari akunmu.', true);
+      }
+    })
+    .subscribe(status => {
+      if(status === 'CHANNEL_ERROR' || status === 'TIMED_OUT'){
+        setNotice('Koneksi real-time terputus. Muat ulang halaman untuk mencoba lagi.');
+      }
+    });
+}
+
 async function persistCloud(){
  if(!currentUser)return;
  const {error}=await supabaseClient.from('ridercare_data').upsert({user_id:currentUser.id,app_data:data,updated_at:new Date().toISOString()},{onConflict:'user_id'});
